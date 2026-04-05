@@ -8,11 +8,13 @@ import os
 load_dotenv()
 app = Flask("Movie-recommender-system")
 
-
-url = "YOUR_DRIVE_FILE_ID"
-gdown.download(f"https://drive.google.com/uc?id=1k38bAIFhnmo7ktN1WawZOHhnhu534rAs", "movies_dict.pkl", quiet=False)
-gdown.download(f"https://drive.google.com/uc?id=1GME53PdmvqXkWWxv3hZGwfhGLzUFbNrJ", "similarity.pkl", quiet=False)
+def load():
+    url = "YOUR_DRIVE_FILE_ID"
+    gdown.download(f"https://drive.google.com/uc?id=1k38bAIFhnmo7ktN1WawZOHhnhu534rAs", "movies_dict.pkl", quiet=False)
+    gdown.download(f"https://drive.google.com/uc?id=1GME53PdmvqXkWWxv3hZGwfhGLzUFbNrJ", "similarity.pkl", quiet=False)
 # kaggle model load
+
+load()
 
 movies_dict = pickle.load(open('movies_dict.pkl','rb'))
 movies = pd.DataFrame(movies_dict)
