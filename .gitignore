@@ -1,0 +1,4 @@
+.env
+venv
+movies_dict.pkl
+similarity.pkl
