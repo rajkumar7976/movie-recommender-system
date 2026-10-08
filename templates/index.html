@@ -1,146 +1,164 @@
 <!DOCTYPE html>
-
-<html>
+<html lang="en">
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Movie Recommender</title>
+    <style>
+        body {
+            background-color: #141414;
+            color: white;
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+        }
 
-```
-<style>
-    body {
-        background-color: #141414;
-        color: white;
-        font-family: Arial;
-        text-align: center;
-    }
+        h1 {
+            color: red;
+        }
 
-    h1 {
-        color: red;
-    }
+        /* Search container */
+        .search-box {
+            position: relative;
+            width: 400px;
+            max-width: 90%;
+            margin: 20px auto;
+        }
 
-    /* 🔥 Search container */
-    .search-box {
-        position: relative;
-        width: 400px;
-        margin: auto;
-    }
+        .search-form {
+            display: flex;
+            gap: 10px;
+        }
 
-    .search-form {
-        display: flex;
-        gap: 10px;
-    }
+        .search-form input {
+            flex: 1;
+            padding: 10px;
+            border-radius: 5px;
+            border: none;
+            outline: none;
+        }
 
-    .search-form input {
-        flex: 1;
-        padding: 10px;
-        border-radius: 5px;
-        border: none;
-    }
+        .search-form button {
+            padding: 10px 15px;
+            background-color: red;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-weight: bold;
+        }
 
-    .search-form button {
-        padding: 10px 15px;
-        background-color: red;
-        color: white;
-        border: none;
-        cursor: pointer;
-        border-radius: 5px;
-    }
+        .search-form button:hover {
+            background-color: #cc0000;
+        }
 
-    /* 🔥 Netflix suggestions */
-    #suggestions {
-        position: absolute;
-        top: 45px;
-        width: 100%;
-        background: #222;
-        border-radius: 5px;
-        z-index: 1000;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    }
+        /* Suggestions dropdown */
+        #suggestions {
+            position: absolute;
+            top: 45px;
+            width: 100%;
+            background: #222;
+            border-radius: 5px;
+            z-index: 1000;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            text-align: left;
+        }
 
-    .suggestion-item {
-        display: flex;
-        align-items: center;
-        padding: 8px;
-        cursor: pointer;
-    }
+        .suggestion-item {
+            display: flex;
+            align-items: center;
+            padding: 8px;
+            cursor: pointer;
+        }
 
-    .suggestion-item img {
-        width: 40px;
-        margin-right: 10px;
-        border-radius: 3px;
-    }
+        .suggestion-item img {
+            width: 40px;
+            height: 55px;
+            object-fit: cover;
+            margin-right: 10px;
+            border-radius: 3px;
+        }
 
-    .suggestion-item:hover {
-        background: #444;
-    }
+        .suggestion-item:hover {
+            background: #444;
+        }
 
-    /* 🔥 Movie cards */
-    .movies-container {
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: center;
-        gap: 20px;
-        margin-top: 20px;
-    }
+        .error-message {
+            color: #ff4d4d;
+            margin-top: 15px;
+            font-weight: bold;
+        }
 
-    .movie-card {
-        width: 150px;
-        transition: transform 0.3s;
-    }
+        /* Movie cards */
+        .movies-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
 
-    .movie-card img {
-        width: 100%;
-        border-radius: 10px;
-    }
+        .movie-card {
+            width: 150px;
+            transition: transform 0.3s;
+        }
 
-    .movie-card:hover {
-        transform: scale(1.1);
-    }
-</style>
-```
+        .movie-card img {
+            width: 100%;
+            height: 220px;
+            object-fit: cover;
+            border-radius: 10px;
+        }
 
+        .movie-card p {
+            margin-top: 8px;
+            font-size: 14px;
+        }
+
+        .movie-card:hover {
+            transform: scale(1.05);
+        }
+    </style>
 </head>
-
 <body>
 
 <h1>🎬 Movie Recommender</h1>
 
 <div class="search-box">
     <form action="/recommend" method="post" class="search-form">
-        <input type="text" id="movieInput" name="movie" placeholder="Search movie..." onkeyup="suggestMovies()">
+        <input type="text" id="movieInput" name="movie" placeholder="Search movie..." autocomplete="off" onkeyup="suggestMovies()">
         <button type="submit">Recommend</button>
     </form>
-
-```
-<div id="suggestions"></div>
-```
-
+    <div id="suggestions"></div>
 </div>
 
-{% if movies %} <h2>Recommended Movies</h2>
+{% if error %}
+    <p class="error-message">{{ error }}</p>
+{% endif %}
 
-```
-<div class="movies-container">
-    {% for i in range(movies|length) %}
-        <div class="movie-card">
-            <img src="{{ posters[i] }}">
-            <p>{{ movies[i] }}</p>
-        </div>
-    {% endfor %}
-</div>
-```
-
+{% if movies %}
+    <h2>Recommended Movies</h2>
+    <div class="movies-container">
+        {% for i in range(movies|length) %}
+            <div class="movie-card">
+                <img src="{{ posters[i] }}" alt="{{ movies[i] }}">
+                <p>{{ movies[i] }}</p>
+            </div>
+        {% endfor %}
+    </div>
 {% endif %}
 
 <script>
 function suggestMovies() {
-    let query = document.getElementById("movieInput").value;
+    let query = document.getElementById("movieInput").value.trim();
 
     if (query.length === 0) {
         document.getElementById("suggestions").innerHTML = "";
         return;
     }
 
-    fetch(`/suggest?query=${query}`)
+    fetch(`/suggest?query=${encodeURIComponent(query)}`)
         .then(res => res.json())
         .then(data => {
             let box = document.getElementById("suggestions");
@@ -150,10 +168,15 @@ function suggestMovies() {
                 let div = document.createElement("div");
                 div.className = "suggestion-item";
 
-                div.innerHTML = `
-                    <img src="${movie.poster}">
-                    <span>${movie.title}</span>
-                `;
+                let img = document.createElement("img");
+                img.src = movie.poster;
+                img.alt = movie.title;
+
+                let span = document.createElement("span");
+                span.textContent = movie.title;
+
+                div.appendChild(img);
+                div.appendChild(span);
 
                 div.onclick = function() {
                     document.getElementById("movieInput").value = movie.title;
@@ -162,7 +185,8 @@ function suggestMovies() {
 
                 box.appendChild(div);
             });
-        });
+        })
+        .catch(err => console.error("Error fetching suggestions:", err));
 }
 </script>
 

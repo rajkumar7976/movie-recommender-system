@@ -1,11 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -e
 
-echo "Running Setup File"
+echo "Setting up Python environment and dependencies..."
+python -m pip install --upgrade pip
+pip install -r requirements.txt
 
-echo "Install all dependency"
-pip install -r requirement.txt &&
-
-sleep 1
-
-echo "Running Server"
-python app.py
+echo "Setup completed successfully."

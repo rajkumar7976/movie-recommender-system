@@ -1,30 +1,72 @@
-from flask import Flask, request, render_template, jsonify
+import os
 import pickle
+
+import gdown
 import pandas as pd
 import requests
 from dotenv import load_dotenv
-import gdown
-import os
+from flask import Flask, jsonify, render_template, request
+
 load_dotenv()
 app = Flask("Movie-recommender-system")
 
+MOVIES_PKL = "movies_dict.pkl"
+SIMILARITY_PKL = "similarity.pkl"
+
+
 def load():
-    url = "YOUR_DRIVE_FILE_ID"
-    gdown.download(f"https://drive.google.com/uc?id=1k38bAIFhnmo7ktN1WawZOHhnhu534rAs", "movies_dict.pkl", quiet=False)
-    gdown.download(f"https://drive.google.com/uc?id=1GME53PdmvqXkWWxv3hZGwfhGLzUFbNrJ", "similarity.pkl", quiet=False)
-# kaggle model load
+    if not os.path.exists(MOVIES_PKL):
+        gdown.download(
+            "https://drive.google.com/uc?id=1k38bAIFhnmo7ktN1WawZOHhnhu534rAs",
+            MOVIES_PKL,
+            quiet=False,
+        )
+    if not os.path.exists(SIMILARITY_PKL):
+        gdown.download(
+            "https://drive.google.com/uc?id=1GME53PdmvqXkWWxv3hZGwfhGLzUFbNrJ",
+            SIMILARITY_PKL,
+            quiet=False,
+        )
+
 
 load()
 
-movies_dict = pickle.load(open('movies_dict.pkl','rb'))
+with open(MOVIES_PKL, "rb") as f:
+    movies_dict = pickle.load(f)
 movies = pd.DataFrame(movies_dict)
-similarity = pickle.load(open('similarity.pkl','rb'))
+
+with open(SIMILARITY_PKL, "rb") as f:
+    similarity = pickle.load(f)
+
+
+def fetch_poster(title):
+    api_key = os.getenv("API_KEY")
+    if not api_key:
+        return None
+
+    url = f"https://www.omdbapi.com/?t={title}&apikey={api_key}"
+    try:
+        response = requests.get(url, timeout=5)
+        if response.status_code != 200:
+            return None
+        data = response.json()
+        poster = data.get("Poster")
+        if not poster or poster == "N/A":
+            return None
+        return poster
+    except (requests.RequestException, ValueError):
+        return None
+
 
 def recommend(movie):
-    movie_index = movies[movies['title'] == movie].index[0]
+    matches = movies[movies["title"].str.lower() == movie.strip().lower()]
+    if matches.empty:
+        return [], []
+
+    movie_index = matches.index[0]
     distances = similarity[movie_index]
 
-    movie_list = sorted(list(enumerate(distances)), reverse=True, key=lambda x: x[1])[1:6]
+    movie_list = sorted(enumerate(distances), reverse=True, key=lambda x: x[1])[1:30]
 
     recommended_movie = []
     recommended_movie_poster = []
@@ -33,59 +75,49 @@ def recommend(movie):
         title = movies.iloc[i[0]].title
         poster = fetch_poster(title)
 
-        # ✅ Only valid posters
         if poster and poster != "N/A":
             recommended_movie.append(title)
             recommended_movie_poster.append(poster)
 
-        # ✅ Stop at 5 valid movies
-
+        if len(recommended_movie) == 5:
+            break
 
     return recommended_movie, recommended_movie_poster
 
 
-def fetch_poster(title):
-
-    api_key = os.getenv("API_KEY")
-    url = f"https://www.omdbapi.com/?t={title}&apikey={api_key}"
-    data = requests.get(url).json()
-
-    poster = data.get('Poster')
-
-    if poster == "N/A" or poster is None:
-        return None
-
-
-
-    return poster
-@app.route('/')
+@app.route("/")
 def home():
-    return render_template('index.html')
+    return render_template("index.html")
 
 
-# 👇 Recommendation route
-@app.route('/recommend', methods=['POST'])
+@app.route("/recommend", methods=["POST"])
 def recommend_ui():
-    movie = request.form['movie']
-    names, posters = recommend(movie)
-    return render_template('index.html', movies=names, posters=posters)
+    movie = request.form.get("movie", "").strip()
+    if not movie:
+        return render_template("index.html", error="Please enter a movie title.")
 
-@app.route('/suggest', methods=['GET'])
-@app.route('/suggest', methods=['GET'])
+    names, posters = recommend(movie)
+    if not names:
+        return render_template(
+            "index.html",
+            error=f"No recommendations found for '{movie}'. Please check the title.",
+        )
+
+    return render_template("index.html", movies=names, posters=posters)
+
+
+@app.route("/suggest", methods=["GET"])
 def suggest():
-    query = request.args.get('query')
+    query = request.args.get("query", "").strip()
+    if not query:
+        return jsonify([])
 
     suggestions = []
-
-    for title in movies['title']:
+    for title in movies["title"]:
         if query.lower() in title.lower():
             poster = fetch_poster(title)
-
             if poster:
-                suggestions.append({
-                    "title": title,
-                    "poster": poster
-                })
+                suggestions.append({"title": title, "poster": poster})
 
         if len(suggestions) == 5:
             break
@@ -93,5 +125,5 @@ def suggest():
     return jsonify(suggestions)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
